@@ -1,47 +1,38 @@
-# Decent
+# decent 5
 
-### A decent(ralized) network for business and development
+### The Garden and The Wall
 
-#### A learning fork and altnet that combines [Scuttlebot](http://github.com/ssbc/scuttlebot) and [Minbase](http://github.com/evbogue/minbase)
+**What** Decent is a secure scuttlebutt server for your website. It hosts a minimal lite client so that visitors to your website can use [secure-scuttlebutt](http://scuttlebot.io) to write their own posts, and write on your wall. 
 
-In the beginning the web was distributed. Then companies in the valley centralized it for their own profit, impoverishing the creative class of the Internet. We're creating a decent alternative.
+**Why?** The reason I started developing with the original [scuttlebutt](http://github.com/dominictarr/scuttlebutt) back in 2012 was because I wanted a distributed social network running on my website. Decent attempts to be a social network for your website by leveraging ssb's distributed database, with a few modifications:
 
-![Decent screenshot](decent.png)
++ A Decent pub is also the moderator. This means whoever controls the Decent pub decides what it wants to replicate. We accomplish this by setting `friends: { hops: 1}` in the config. This keeps the amount of information on a Decent pub manageable by only showing a corner of the scuttleverse, instead of all of it
++ Limiting it to 1 hop makes the database pretty small, because you're not syncing the entire scuttleverse
++ While anyone can view and post to a Decent pub, new users won't replicate by default. Someone will have to follow them for them to replicate across the scuttleverse 
++ No private messages. If you want private messages, install [mvd](http://github.com/evbogue/mvd) on your computer
++ Everyone gets a 'Wall' in Decent, making the UI easy for new users to write messages to each other or to the website creator
++ Decent has mutable messages, so anyone can edit their messages. There is no 'delete' on Decent, because ssb is an append only log, and I don't want to give anyone the false sense of thinking that deleted messages actually go away. They do not.
 
-Decent is based on [Scuttlebot](http://scuttlebot.io), but uses an alternative network key: `EVRctE2Iv8GrO/BpQCF34e2FMPsDJot9x0j846LjVtc=`.
+Setting Decent up this way makes it a Garden (because your pub curates the data hosted on it by only showing users followed by the pub) and The Wall (gives users an easy way to talk to you from your website)
 
-Decent combines all of the necessary parts of Scuttlebot for a simpler install process
+In some ways Decent is a compromise, because the people who use Decent are not full peers on the network. However, I hope to encourage people to install a full ssb client on their desktop by limiting access to private messages on Decent pubs. In an ideal world everyone would run their own ssb server on their own computer, but we need to face that we are not living in an ideal world where everyone has the technical ability to install a complicated distributed social network written in Node.js on their computer right now.
 
-### Try Decent in your browser
+In an ideal world Decent would include two features that are not available right now:
 
-+ http://decent.gitmx.com/
-+ http://decent.evbogue.com/
-+ http://decent.gwenbell.com/
++ A full peer in the browser 
++ The ability to easily delete a feed with the click of a single button
 
-### Install Decent on your local or vps
+Right now the server has to run on a VPS, and to delete someone's feed you need to unfollow and/or block a client and then resync your scuttlebot database from scratch.
 
-```
-% git clone http://github.com/evbogue/decent.git
-% cd decent && npm install
-% npm run build
-% npm start
-```
+Try Decent at http://decent.evbogue.com/
 
-Navigate to http://localhost:3001/ to see your Decent.
+Remember! The first rule of Decent is: be decent.
 
-### Embed Decent on your website
+### history
 
-```
-<iframe src="http://decent.gitmx.com/" style="width: 100%; border: none; height: 24em;"></iframe>
-```
+`decent` is a fork of [mvd](http://github.com/evbogue/mvd) 
 
-If you're deploying Decent on your local or your own VPS, you will need a follow from an existing Decent pub. Please request an invite: [ev@evbogue.com](mailto:ev@evbogue.com)
+In previous versions of Decent it was an 'altnet'. Decent now uses the main network key, and only shows a corner of the scuttleverse.
 
-Once you're on Decent, be sure to obey the first rule:
-
-1. Be decent
-
-Decent is maintained by [Ev Bogue](http://evbogue.com), based on the work of [Dominic Tarr](http://dominictarr.com).
-
-
-
+---
+MIT

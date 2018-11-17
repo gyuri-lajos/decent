@@ -1,0 +1,57 @@
+{
+  "_from": "ssb-ws@^3.0.0",
+  "_id": "ssb-ws@3.0.2",
+  "_inBundle": false,
+  "_integrity": "sha512-rQnbFIdzyQrB77y1UD0cWlW/TYO6rqCT1RO95p0ka6UQsEBtm/O7TN8h5AgroD9XqyxdusXhEbhobpUt41s1Cw==",
+  "_location": "/ssb-ws",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "range",
+    "registry": true,
+    "raw": "ssb-ws@^3.0.0",
+    "name": "ssb-ws",
+    "escapedName": "ssb-ws",
+    "rawSpec": "^3.0.0",
+    "saveSpec": null,
+    "fetchSpec": "^3.0.0"
+  },
+  "_requiredBy": [
+    "/scuttlebot"
+  ],
+  "_resolved": "https://registry.npmjs.org/ssb-ws/-/ssb-ws-3.0.2.tgz",
+  "_shasum": "e01e48c28128efb8318d0f291a6d85ef77ff1fdc",
+  "_spec": "ssb-ws@^3.0.0",
+  "_where": "/home/ev/mvd/node_modules/scuttlebot",
+  "author": {
+    "name": "'Dominic Tarr'",
+    "email": "dominic.tarr@gmail.com",
+    "url": "dominictarr.com"
+  },
+  "bugs": {
+    "url": "https://github.com/dominictarr/ssb-ws/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "emoji-server": "^1.0.0",
+    "multiblob-http": "^0.4.2",
+    "multiserver": "^1.13.5",
+    "muxrpc": "^6.3.3",
+    "pull-box-stream": "^1.0.13",
+    "ssb-ref": "^2.3.0",
+    "stack": "^0.1.0"
+  },
+  "deprecated": false,
+  "description": "websocket & http server for ssb",
+  "devDependencies": {},
+  "homepage": "https://github.com/dominictarr/ssb-ws",
+  "license": "MIT",
+  "name": "ssb-ws",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dominictarr/ssb-ws.git"
+  },
+  "scripts": {
+    "test": "set -e; for t in test/*.js; do node $t; done"
+  },
+  "version": "3.0.2"
+}
