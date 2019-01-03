@@ -33,30 +33,35 @@ module.exports = function (msg) {
 
   else if (msg.value.content.type == 'edit') {
     message.appendChild(tools.header(msg))
-    var current = msg.value.content.text
-    sbot.get(msg.value.content.updated, function (err, updated) {
-      if (updated) {
-        fragment = document.createDocumentFragment()
-        var previous = updated.content.text
-        var ready = diff.diffWords(previous, current)
-        ready.forEach(function (part) {
-          if (part.added === true) {
-            color = 'blue'
-          } else if (part.removed === true) {
-            color = 'gray'
-          } else {color = '#333'}
-          var span = h('span')
-          span.style.color = color
-          if (part.removed === true) {
-            span.appendChild(h('del', document.createTextNode(part.value)))
-          } else {
-            span.appendChild(document.createTextNode(part.value))
+    if (msg.value.content.text) {
+      var current = msg.value.content.text
+      sbot.get(msg.value.content.updated, function (err, updated) {
+        if (updated) {
+          // quick fix, need to decrypt messages if they're private
+          if (updated.content.text) {
+            fragment = document.createDocumentFragment()
+            var previous = updated.content.text
+            var ready = diff.diffWords(previous, current)
+            ready.forEach(function (part) {
+              if (part.added === true) {
+                color = 'blue'
+              } else if (part.removed === true) {
+                color = 'gray'
+              } else {color = '#333'}
+              var span = h('span')
+              span.style.color = color
+              if (part.removed === true) {
+                span.appendChild(h('del', document.createTextNode(part.value)))
+              } else {
+                span.appendChild(document.createTextNode(part.value))
+              }
+              fragment.appendChild(span)
+            })
+            message.appendChild(h('code', fragment))
           }
-          fragment.appendChild(span)
-        })
-        message.appendChild(h('code', fragment))
-      }
-    })
+        }
+      })
+    }
     return message
   }
 
