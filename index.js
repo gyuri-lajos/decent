@@ -16,7 +16,7 @@ var nav = h('div.navbar',
   h('div.internal',
     h('li', h('a', {href: '#' + id}, h('span.avatar--small', avatar.image(id)))),
     h('li', h('a', {href: '#' + id}, avatar.name(id))),
-    h('li', h('a', 'Post', {
+    h('li', h('a', h('button', 'New Post', {
       onclick: function () {
         if (document.getElementById('composer')) { return }
         else {
@@ -31,10 +31,10 @@ var nav = h('div.navbar',
           }
         }
       }
-    })),
+    }))),
     h('li', h('a', {href: '#' }, 'All')),
     h('li', h('a', {href: '#wall/' + id }, 'Wall')),
-    h('li', h('a', {href: '#key' }, 'Key')),
+    h('li', h('a', {href: '#key' }, 'Your Key')),
     h('li.right', h('a', {href: 'http://github.com/evbogue/decent'}, '?')),
   )
 )
