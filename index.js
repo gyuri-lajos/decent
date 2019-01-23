@@ -33,6 +33,7 @@ var nav = h('div.navbar',
       }
     }))),
     h('li', h('a', {href: '#' }, 'All')),
+    h('li', h('a', {href: '#friends/' + id }, 'Friends')),
     h('li', h('a', {href: '#wall/' + id }, 'Wall')),
     h('li', h('a', {href: '#key' }, 'Your Key')),
     h('li.right', h('a', {href: 'http://github.com/evbogue/decent'}, '?')),
