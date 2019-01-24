@@ -620,6 +620,6 @@ module.exports = function () {
     else 
       search(src.substr(1).split('%20').join(' '))
   } else {
-    everythingStream()
+    friendsStream(id)
   }
 }
