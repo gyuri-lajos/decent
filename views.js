@@ -614,6 +614,8 @@ module.exports = function () {
     backchannel()
   } else if (src == 'key') {
     keyPage()
+  } else if (src == 'all') {
+    everythingStream()
   } else if (src[0] == '?' || (src[0] == '#')) {
     if (src[0] == '#')
       search(src.split('%20').join(' '))
