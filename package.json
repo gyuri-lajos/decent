@@ -1,6 +1,6 @@
 {
   "name": "mvd",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "description": "minimum viable decent",
   "main": "index.js",
   "scripts": {
