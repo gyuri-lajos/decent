@@ -21,7 +21,7 @@
     "decent-ws": "1.1.0",
     "deep-extend": "^0.6.0",
     "diff": "^3.5.0",
-    "ecstatic": "^3.3.0",
+    "ecstatic": "^3.3.1",
     "flumeview-query": "^7.1.0",
     "human-time": "0.0.1",
     "hyperfile": "^2.0.0",
