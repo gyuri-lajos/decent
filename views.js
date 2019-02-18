@@ -22,7 +22,205 @@ var id = require('./keys').id
 var ssbKeys = require('ssb-keys')
 var keys = require('./keys')
 
+
 var compose = require('./compose')
+
+var labelStream = function (label){
+  var content = h('div.content')
+  var screen = document.getElementById('screen')
+  screen.appendChild(hyperscroll(content))
+  content.appendChild(h('div.breadcrumbs.message', h('a', {href: '/'}, 'label'), ' ⯈ ' , h('a', {href: '/#label/' + label}, label)))
+  function createStream (opts) {
+    return pull(
+      Next(sbot.query, opts, ['value', 'timestamp']),
+      pull.map(function (msg){
+        if (msg.value) {
+          sbot.get(msg.value.content.link, function (err, data) {
+            if (data) {
+              var message = {}
+              message.value = data
+              message.key = msg.value.content.link
+              content.appendChild(render(message))
+            }
+          })
+        }
+      })
+    )
+  }
+
+  pull(
+    createStream({
+      limit: 10,
+      reverse: true,
+      live: false,
+      query: [{$filter: { value: { content: {type: 'label', label: label }, timestamp: { $gt: 0 }}}}]
+    }),
+    stream.bottom(content)
+  )
+
+  pull(
+    createStream({
+      limit: 10,
+      old: false,
+      live: true,
+      query: [{$filter: { value: { content: {type: 'label', label: label }, timestamp: { $gt: 0 }}}}]
+    }),
+    stream.top(content)
+  )
+}
+
+
+var privateStream = function () {
+  var screen = document.getElementById('screen')
+  var content = h('div.content')
+
+  screen.appendChild(hyperscroll(content))
+
+  function createStream (opts) {
+    return pull(
+      Next(sbot.query, opts, ['value', 'timestamp']),
+      pull.filter(function (msg) {
+        return ((msg.value.private == true) || ('string' == typeof msg.value.content))
+      }),
+      pull.map(function (msg) {
+        /*if (msg.value.private != true) {
+          var unboxed = ssbKeys.unbox(msg.value.content, keys)
+          if (unboxed) {
+            msg.value.content = unboxed
+            msg.value.private = true
+            return render(msg)
+          } else {  
+            return render(msg)
+          }
+        } else {return render(msg)}*/
+          return render(msg)
+      })
+    )
+  }
+
+  pull(
+    createStream({
+      limit: 100,
+      reverse: true,
+      live: false,
+      query: [{$filter: { value: { timestamp: { $gt: 0 }}}}]
+    }),
+    stream.bottom(content)
+  )
+
+  pull(
+    createStream({
+      limit: 100,
+      old: false,
+      live: true,
+      query: [{$filter: { value: { timestamp: { $gt: 0 }}}}]
+    }),
+    stream.top(content)
+  )
+
+
+  /*function createStream (opts) {
+    return pull(
+      Next(sbot.query, opts, ['value', 'timestamp']),
+      pull.map(function (msg) {
+        if (msg.value) {
+          if (msg.value.timestamp > Date.now()) {
+            return h('div.future')
+          } else {
+            return render(msg)
+          }
+        }
+      })
+    )
+  }
+
+  pull(
+    createStream({
+      limit: 10,
+      reverse: true,
+      live: false,
+      query: [{$filter: { value: { private: true, timestamp: { $gt: 0 }}}}]
+    }),
+    stream.bottom(content)
+  )
+
+  pull(
+    createStream({
+      limit: 10,
+      old: false,
+      live: true,
+      query: [{$filter: { value: { private: true, timestamp: { $gt: 0 }}}}]
+    }),
+    stream.top(content)
+  )*/
+
+
+  /*function createStream (opts) {
+    return pull(
+      More(sbot.createLogStream, opts),
+      pull.filter(function (msg) {
+        return 'string' == typeof msg.value.content
+      }),
+      pull.filter(function (msg) {
+        var unboxed = ssbKeys.unbox(msg.value.content, keys)
+        if (unboxed) {
+          msg.value.content = unboxed
+          msg.value.private = true
+          return msg
+        } else {
+          return msg
+        }
+      }),
+      pull.map(function (msg) {
+        return render(msg)
+      })
+    )
+  }
+
+  pull(
+    createStream({old: false, limit: 1000}),
+    stream.top(content)
+  )
+
+  pull(
+    createStream({reverse: true, live: false, limit: 1000}),
+    stream.bottom(content)
+  )*/
+}
+
+var queueStream = function () {
+  var content = h('div.content')
+  var screen = document.getElementById('screen')
+  screen.appendChild(hyperscroll(content))
+
+  pull(
+    sbot.query({query: [{$filter: { value: {author: id, content: {type: 'queue'}}}}]}),
+    pull.drain(function (msg) {
+      if (msg.value) {
+        if (ref.isMsg(msg.value.content.message)) {
+          if (msg.value.content.queue == true) {
+            sbot.get(msg.value.content.message, function (err, data) {
+              if (data) {
+                var message = {}
+                message.value = data
+                message.key = msg.value.content.message
+                content.appendChild(render(message))
+              }
+            })
+          } 
+          if (msg.value.content.queue == false) {
+            setTimeout(function () {
+              var gotIt = document.getElementById(msg.value.content.message.substring(0,44))
+              if (gotIt != null) {
+                gotIt.outerHTML = ''
+              } 
+            }, 100)
+          }
+        }
+      }
+    })
+  ) 
+}
 
 var mentionsStream = function (src) {
   var content = h('div.content')
@@ -62,141 +260,14 @@ var mentionsStream = function (src) {
     }),
     stream.top(content)
   )
-
-  var profile = h('div.content#profile', h('div.message'))
-
-  if (screen.firstChild.firstChild) {
-    screen.firstChild.insertBefore(profile, screen.firstChild.firstChild)
-  } else {
-    screen.firstChild.appendChild(profile)
-  }
-
-  var name = avatar.name(src)
-
-  var editname = h('span',
-    avatar.name(src),
-    h('button.btn', 'New name', {
-      onclick: function () {
-        var nameput = h('input', {placeholder: name.textContent})
-        var nameedit =
-          h('span', nameput,
-            h('button.btn', 'Preview', {
-              onclick: function () {
-                if (nameput.value[0] != '@')
-                  tobename = nameput.value
-                else
-                  tobename = nameput.value.substring(1, 100)
-                var newname = h('span', h('a', {href: '#' + src}, '@' + tobename), h('button.btn', 'Publish', {
-                  onclick: function () {
-                    var donename = h('span', h('a', {href: '#' + src}, '@' + tobename))
-                    sbot.publish({type: 'about', about: src, name: tobename})
-                    localStorage[src + 'name'] = tobename
-                    newname.parentNode.replaceChild(donename, newname)
-                 }
-                }))
-                nameedit.parentNode.replaceChild(newname, nameedit)
-              }
-            })
-          )
-        editname.parentNode.replaceChild(nameedit, editname)
-      }
-    })
-  )
-
-  var editimage = h('span',
-    h('button.btn', 'New image', {
-      onclick: function () {
-        var upload =
-        h('span',
-          hyperfile.asDataURL(function (data) {
-            if(data) {
-              //img.src = data
-              var _data = dataurl.parse(data)
-              pull(
-                pull.once(_data.data),
-                sbot.addblob(function (err, hash) {
-                  if(err) return alert(err.stack)
-                  selected = {
-                    link: hash,
-                    size: _data.data.length,
-                    type: _data.mimetype
-                  }
-                })
-              )
-            }
-          }),
-          h('button.btn', 'Preview image', {
-            onclick: function() {
-              if (selected) {
-                console.log(selected)
-                var oldImage = document.getElementById('profileImage')
-                var newImage = h('span.avatar--medium', h('img', {src: config.blobsUrl + selected.link}))
-                var publish = h('button.btn', 'Publish image', {
-                  onclick: function () {
-                    sbot.publish({
-                      type: 'about',
-                      about: src,
-                      image: selected
-                    }, function (err, published) {
-                      console.log(published)
-                    })
-                  }
-                })
-                upload.parentNode.replaceChild(publish, upload)
-                oldImage.parentNode.replaceChild(newImage, oldImage)
-              }
-            }
-          })
-        )
-      editimage.parentNode.replaceChild(upload, editimage)
-      }
-    })
-  )
-
-
-  var avatars = h('div.avatars',
-    h('a', {href: '#' + src},
-      h('span.avatar--medium#profileImage', avatar.image(src)),
-      editname,
-      h('br'),
-      editimage
-    )
-  )
-
-  pull(
-    sbot.userStream({id: src, reverse: false, limit: 1}),
-    pull.drain(function (msg) { 
-      var howlong = h('span', h('br'), ' arrived ', human(new Date(msg.value.timestamp)))
-      avatars.appendChild(howlong)
-      console.log(msg)
-    })
-  )
-
-  var buttons = h('div.buttons')
-
-  profile.firstChild.appendChild(avatars)
-  profile.firstChild.appendChild(buttons)
-  buttons.appendChild(tools.mute(src))
-
-  setTimeout (function () {
-    opts = {}
-    opts.type = 'post'
-    opts.mentions = '[' + name.textContent + '](' + src + ')'
-    var composer = h('div#composer', h('div.message', compose(opts)))
-    profile.appendChild(composer)
-  }, 1000)
-
-  //buttons.appendChild(writeMessage)
-  buttons.appendChild(tools.follow(src))
-
-  buttons.appendChild(h('a', {href: '#' + src}, h('button.btn', "View ", avatar.name(src), "'s feed")))
 }
 
 var userStream = function (src) {
   var content = h('div.content')
-
   var screen = document.getElementById('screen')
+
   screen.appendChild(hyperscroll(content))
+
   function createStream (opts) {
     return pull(
       More(sbot.userStream, opts, ['value', 'sequence']),
@@ -226,13 +297,13 @@ var userStream = function (src) {
 
   var name = avatar.name(src)
 
-  var editname = h('span',
-    avatar.name(src),
+  var editname = h('span', 
+    avatar.name(src), 
     h('button.btn', 'New name', {
       onclick: function () {
         var nameput = h('input', {placeholder: name.textContent})
-        var nameedit =
-          h('span', nameput,
+        var nameedit = 
+          h('span', nameput, 
             h('button.btn', 'Preview', {
               onclick: function () {
                 if (nameput.value[0] != '@')
@@ -241,13 +312,13 @@ var userStream = function (src) {
                   tobename = nameput.value.substring(1, 100)
                 var newname = h('span', h('a', {href: '#' + src}, '@' + tobename), h('button.btn', 'Publish', {
                   onclick: function () {
-                    var donename = h('span', h('a', {href: '#' + src}, '@' + tobename))
+                    var donename = h('span', h('a', {href: '#' + src}, '@' + tobename)) 
                     sbot.publish({type: 'about', about: src, name: tobename})
                     localStorage[src + 'name'] = tobename
                     newname.parentNode.replaceChild(donename, newname)
                  }
                 }))
-                nameedit.parentNode.replaceChild(newname, nameedit)
+                nameedit.parentNode.replaceChild(newname, nameedit) 
               }
             })
           )
@@ -259,7 +330,7 @@ var userStream = function (src) {
   var editimage = h('span',
     h('button.btn', 'New image', {
       onclick: function () {
-        var upload =
+        var upload = 
         h('span',
           hyperfile.asDataURL(function (data) {
             if(data) {
@@ -298,6 +369,13 @@ var userStream = function (src) {
                 upload.parentNode.replaceChild(publish, upload)
                 oldImage.parentNode.replaceChild(newImage, oldImage)
               }
+            /*if(selected) {
+              api.message_confirm({
+                type: 'about',
+                about: id,
+                image: selected
+              })
+            } else { alert('select an image before hitting preview')}*/
             }
           })
         )
@@ -306,8 +384,7 @@ var userStream = function (src) {
     })
   )
 
-
-  var avatars = h('div.avatars',
+  var avatars = h('div.avatars', 
     h('a', {href: '#' + src},
       h('span.avatar--medium#profileImage', avatar.image(src)),
       editname,
@@ -315,8 +392,7 @@ var userStream = function (src) {
       editimage
     )
   )
-
-
+  
   pull(
     sbot.userStream({id: src, reverse: false, limit: 1}),
     pull.drain(function (msg) { 
@@ -327,16 +403,75 @@ var userStream = function (src) {
   )
 
 
-
   var buttons = h('div.buttons')
   
   profile.firstChild.appendChild(avatars)
   profile.firstChild.appendChild(buttons)
   buttons.appendChild(tools.mute(src))
 
-  buttons.appendChild(tools.follow(src))
+  var writeMessage = h('button.btn', 'Public message ', avatar.name(src), {
+    onclick: function () {
+      opts = {}
+      opts.type = 'post'
+      opts.mentions = '[' + name.textContent + '](' + src + ')'
+      var composer = h('div#composer', h('div.message', compose(opts)))
+      profile.appendChild(composer)
+    }
+  })
 
-  buttons.appendChild(h('a', {href: '#wall/' + src}, h('button.btn', "Write on ", avatar.name(src), "'s wall")))
+  var writePrivate = h('button.btn', 'Private message ', avatar.name(src), {
+    onclick: function () {
+      opts = {}
+      opts.type = 'post'
+      opts.mentions = '[' + name.textContent + '](' + src + ')'
+      opts.recps = [src, id]
+      var composer = h('div#composer', h('div.message', compose(opts)))
+      profile.appendChild(composer)
+    }
+  })
+ 
+  buttons.appendChild(writeMessage)
+  buttons.appendChild(writePrivate)
+  buttons.appendChild(tools.follow(src))
+  //buttons.appendChild(tools.block(src))
+
+  buttons.appendChild(h('button.btn', 'Generate follows', {
+    onclick: function () {
+      profile.firstChild.appendChild(tools.getFollowing(src))
+      profile.firstChild.appendChild(tools.getFollowers(src))
+    }
+  }))    
+
+  buttons.appendChild(h('button.btn', 'Generate blocks', {
+    onclick: function () {
+      profile.firstChild.appendChild(tools.getBlocks(src))
+      profile.firstChild.appendChild(tools.getBlocked(src))
+    }
+  }))    
+
+  buttons.appendChild(h('a', {href: '#wall/' + src}, h('button.btn', avatar.name(src), "'s wall")))
+
+}
+
+var privateMsg = function (src) {
+  var content = h('div.content')
+  var screen = document.getElementById('screen')
+  screen.appendChild(hyperscroll(content))
+
+  sbot.get(src, function (err, data) {
+    if (err) {
+      var message = h('div.message', 'Missing message!')
+      content.appendChild(message)
+    }
+    if (data) {
+      console.log(data)
+      data.value = data
+      data.key = src
+
+      content.appendChild(render(data))
+    }
+
+  })
 }
 
 var msgThread = function (src) {
@@ -354,24 +489,24 @@ var msgThread = function (src) {
     }) 
   )
 
-
   sbot.get(src, function (err, data) {
     if (err) {
       var message = h('div.message', 'Missing message!')
       content.appendChild(message)
     }
     if (data) {
-      data.value = data
-      data.key = src
-      console.log(data)
-      var rootMsg = render(data)
+      var message = {}
+      message.value = data
+      message.key = src
+      console.log(message)
+      var rootMsg = render(message)
 
       if (content.firstChild) {
         content.insertBefore(rootMsg, content.firstChild)
       } else {
         content.appendChild(rootMsg)
       }
-      if (data.value.content.type == 'git-repo') {
+      if (message.value.content.type == 'git-repo') {
         pull(
           sbot.backlinks({query: [{$filter: {value: {content: {type: 'git-update'}}, dest: src}}]}),
           pull.drain(function (msg) {
@@ -384,6 +519,7 @@ var msgThread = function (src) {
 
     }
   })
+
 }
 
 var keyPage = function () {
@@ -422,6 +558,7 @@ var keyPage = function () {
   screen.appendChild(hyperscroll(content))
 }
 
+
 function friendsStream (src) {
 
   var screen = document.getElementById('screen')
@@ -437,8 +574,8 @@ function friendsStream (src) {
           if (data === true) {
             return content.appendChild(render(msg))
             console.log(msg)
-          } else {
-            return content.appendChild(h('div'))
+          } else { 
+            return content.appendChild(h('div', ''))
           }
         })
       })
@@ -447,27 +584,14 @@ function friendsStream (src) {
 
   pull(
     createStream({
-      limit: 500,
+      limit: 1000,
       reverse: true,
       live: false,
-      query: [{$filter: { value: { timestamp: { $gt: 0 }}}}]
+      query: [{$filter: { value: { timestamp: { $gt: 0 }}}}]    
     }),
     stream.bottom(content)
   )
-
-  pull(
-    createStream({
-      limit: 500,
-      old: false,
-      live: true,
-      query: [{$filter: { value: { timestamp: { $gt: 0 }}}}]
-    }),
-    stream.top(content)
-  )
 }
-
-
-
 
 function everythingStream () {
 
@@ -511,6 +635,9 @@ function everythingStream () {
     stream.top(content)
   )
 }
+
+
+
 
 function backchannel () {
 
@@ -602,7 +729,9 @@ function hash () {
 module.exports = function () {
   var src = hash()
 
-  if (ref.isFeed(src)) {
+  if (src.substring(52, 59) == '?unbox=') {
+    privateMsg(src) 
+  } else if (ref.isFeed(src)) {
     userStream(src)
   } else if (ref.isMsg(src)) {
     msgThread(src)
@@ -610,18 +739,23 @@ module.exports = function () {
     mentionsStream(src.substring(5))
   } else if (ref.isFeed(src.substring(8))) {
     friendsStream(src.substring(8))
+  } else if (src.substring(0, 6) === 'label/') {
+    labelStream(src.substring(6))
+  } else if (src == 'queue') {
+    queueStream()
   } else if (src == 'backchannel') {
     backchannel()
+  } else if (src == 'private') {
+    privateStream()
   } else if (src == 'key') {
     keyPage()
-  } else if (src == 'all') {
-    everythingStream()
   } else if (src[0] == '?' || (src[0] == '#')) {
     if (src[0] == '#')
       search(src.split('%20').join(' '))
-    else 
+    else
       search(src.substr(1).split('%20').join(' '))
   } else {
-    friendsStream(id)
+    everythingStream()
   }
+
 }

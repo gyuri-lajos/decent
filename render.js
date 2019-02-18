@@ -11,6 +11,9 @@ var id = require('./keys').id
 var avatar = require('./avatar')
 var ssbAvatar = require('ssb-avatar')
 
+var ssbKeys = require('ssb-keys')
+var keys = require('./keys')
+
 var diff = require('diff')
 
 function hash () {
@@ -19,7 +22,7 @@ function hash () {
 
 module.exports = function (msg) {
   var message = h('div.message#' + msg.key.substring(0, 44))
-
+  
   if (!localStorage[msg.value.author])
     var cache = {mute: false}
   else
@@ -28,6 +31,47 @@ module.exports = function (msg) {
   if (cache.mute == true) {
     var muted = h('span', ' muted')
     message.appendChild(tools.mini(msg, muted))
+    return message
+  }
+
+  else if (msg.value.content.type == 'about') {
+    if (msg.value.content.image) {
+      var image = h('span.avatar--small', 
+        ' identified ', 
+        h('a', {href: '#' + msg.value.content.about}, avatar.cachedName(msg.value.content.about)), 
+        ' as ', 
+        h('img', {src: config.blobsUrl + msg.value.content.image.link})
+      )
+      message.appendChild(tools.mini(msg, image))
+    }
+    if (msg.value.content.name) {
+      var name = h('span', 
+        ' identified ', 
+        h('a', {href: '#' + msg.value.content.about}, avatar.cachedName(msg.value.content.about)), 
+        ' as ', msg.value.content.name
+        )
+      message.appendChild(tools.mini(msg, name))
+    }
+  
+    return message
+  }
+
+  else if (msg.value.content.type == 'label'){
+    var content = h('span', ' labeled ', tools.messageLink(msg.value.content.link), ' as ', h('mark', h('a', {href: '#label/' + msg.value.content.label}, msg.value.content.label)))
+    message.appendChild(tools.mini(msg, content))
+    return message
+  }
+
+  else if (msg.value.content.type == 'queue') {
+    if (msg.value.content.queue == true) {
+      var content = h('span', ' added ', tools.messageLink(msg.value.content.message), ' to their ', h('a', {href: '#queue'}, 'queue'))
+      message.appendChild(tools.mini(msg, content))
+    } 
+    if (msg.value.content.queue == false) {
+      var content = h('span', ' removed ', tools.messageLink(msg.value.content.message), ' from their ', h('a', {href: '#queue'}, 'queue'))
+      message.appendChild(tools.mini(msg, content))
+
+    }
     return message
   }
 
@@ -44,7 +88,7 @@ module.exports = function (msg) {
             var ready = diff.diffWords(previous, current)
             ready.forEach(function (part) {
               if (part.added === true) {
-                color = 'blue'
+                color = 'cyan'
               } else if (part.removed === true) {
                 color = 'gray'
               } else {color = '#333'}
@@ -64,7 +108,6 @@ module.exports = function (msg) {
     }
     return message
   }
-
 
   else if (msg.value.content.type == 'scat_message') {
     var src = hash()
@@ -149,9 +192,68 @@ module.exports = function (msg) {
     var cloneurl = h('pre', 'git clone ssb://' + msg.key)
     message.appendChild(cloneurl)
     return message  
-  } 
+  }
 
-  else if (msg.value.content.type == 'post') {
+  else if (msg.value.content.type == 'wiki') {
+    var fallback = {}
+
+    var opts = {
+      type: 'wiki',
+      branch: msg.key
+    }
+
+    if (msg.value.content.root)
+      opts.root = msg.value.content.root
+    else
+      opts.root = msg.key
+
+    message.appendChild(tools.header(msg))
+
+    message.appendChild(h('div.message__body', tools.markdown(msg.value.content.text)))
+
+    pull(
+      sbot.query({query: [{$filter: {value: {content: {type: 'edit', original: msg.key}}}}], limit: 100}),
+      pull.drain(function (update) {
+        if (update.sync) {
+        } else {
+          var newMessage = h('div', tools.markdown(update.value.content.text))
+          var latest = h('div.message__body',
+            tools.timestamp(update, {edited: true}),
+            newMessage
+          )
+          message.replaceChild(latest, message.childNodes[message.childNodes.length - 2])
+          fallback.messageText = update.value.content.text
+          opts.updated = update.key
+          opts.original = msg.key
+        }
+      })
+    )
+
+    var buttons = h('div.buttons')
+
+    buttons.appendChild(h('button.btn', 'Edit wiki', {
+      onclick: function () {
+        opts.type = 'edit'
+        if (!fallback.messageText)
+          fallback.messageText = msg.value.content.text
+
+        if (!opts.updated)
+          opts.updated = msg.key
+          opts.original = msg.key
+
+        var r = message.childNodes.length - 1
+        fallback.buttons = message.childNodes[r]
+        message.removeChild(message.childNodes[r])
+        var compose = h('div#edit:' + msg.key.substring(0, 44), composer(opts, fallback))
+        message.replaceChild(compose, message.lastElementChild)
+      }
+    }))
+
+    buttons.appendChild(tools.star(msg))
+    message.appendChild(buttons)
+    return message
+
+  } else if (msg.value.content.type == 'post') {
     var opts = {
       type: 'post',
       branch: msg.key
@@ -189,6 +291,17 @@ module.exports = function (msg) {
       })    
     )
 
+    pull(
+      sbot.query({query: [{$filter: {value: { content: {type: 'label', link: msg.key}}}}], limit: 100, live: true}),
+      pull.drain(function (labels){
+      console.log(labels)
+      if (labels.value){
+        message.appendChild(h('span', ' ', h('mark', h('a', {href: '#label/' + labels.value.content.label}, labels.value.content.label))))
+
+       }
+     })
+    )
+
     var name = avatar.name(msg.value.author)
 
     var buttons = h('div.buttons')
@@ -211,7 +324,7 @@ module.exports = function (msg) {
       }
     }))
 
-    /*buttons.appendChild(h('button.btn', 'Boost', {
+    buttons.appendChild(h('button.btn', 'Boost', {
       onclick: function () {
         opts.type = 'post'
         opts.mentions = '[' + name.textContent + '](' + msg.value.author + ')'
@@ -230,7 +343,7 @@ module.exports = function (msg) {
         message.removeChild(message.childNodes[r])
         message.parentNode.insertBefore(compose, message.nextSibling)
       }
-    }))*/
+    }))
 
 
     if (msg.value.author == id)
@@ -252,6 +365,33 @@ module.exports = function (msg) {
         }
       }))
 
+
+    var inputter = h('input', {placeholder: 'Add a label to this post ie art, books, new'})
+
+    var labeler = h('div',
+      inputter,
+      h('button.btn', 'Publish label', {
+        onclick: function () {
+          var post = {}
+          post.type = 'label',
+          post.label = inputter.value,
+          post.link = msg.key
+      
+          sbot.publish(post, function (err, msg){
+            console.log(msg)
+            labeler.parentNode.replaceChild(buttons, labeler)
+           })
+          }
+        })
+      )
+ 
+    var labels = h('button.btn', 'Add label', {
+      onclick: function () {
+        buttons.parentNode.replaceChild(labeler, buttons)
+      }
+    })
+
+    buttons.appendChild(labels)
     //buttons.appendChild(tools.queueButton(msg))
     buttons.appendChild(tools.star(msg))
     message.appendChild(buttons)
@@ -264,19 +404,27 @@ module.exports = function (msg) {
       var link = h('span', ' ', h('img.emoji', {src: config.emojiUrl + 'stars.png'}), ' ', h('a', {href: '#' + msg.value.content.vote.link}, tools.messageLink(msg.value.content.vote.link)))
     message.appendChild(tools.mini(msg, link))
     return message
-  } /*else if (typeof msg.value.content === 'string') {
-    var privateMsg = h('span', ' sent a private message.')
-    message.appendChild(tools.mini(msg, privateMsg))
-    return message
-  }*/ else {
+  } else if (typeof msg.value.content === 'string') {
+    var unboxed = ssbKeys.unbox(msg.value.content, keys)
+    if (unboxed) {
+      msg.value.content = unboxed
+      msg.value.private = true
+      return module.exports(msg)
+    } else {
+      var privateMsg = h('span', ' sent a private message.')
+      message.appendChild(tools.mini(msg, privateMsg))
+      return message
+      //return h('div')
+    }
+  } else {
 
     //FULL FALLBACK
     //message.appendChild(tools.header(msg))
-    //message.appendChild(h('pre', tools.rawJSON(msg.value.content)))
+    //message.appendChild(h('pre', tools.rawJSON(msg.value)))
 
     //MINI FALLBACK
-    //var fallback = h('span', ' ' + msg.value.content.type)
-    //message.appendChild(tools.mini(msg, fallback))
-    return h('div')//message 
+    var fallback = h('span', ' ' + msg.value.content.type)
+    message.appendChild(tools.mini(msg, fallback))
+    return h('div', message)
   }
 }
