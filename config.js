@@ -1,7 +1,9 @@
 var http = require('http')
 
 module.exports = function () {
-  var host = window.location.origin
+  //var host = window.location.origin
+  //var host = 'http://localhost:8989'
+  var host = 'http://evbogue.com:8989'
 
   function getConfig () {
     http.get(host + '/get-config', function (res) {
@@ -24,10 +26,12 @@ module.exports = function () {
 
   config.blobsUrl = host + '/blobs/get/'
   config.emojiUrl = host + '/img/emoji/'
-  if (config.address) {
-    addies = config.address.split(';')
-    config.remote = addies[1]
-  } 
+
+  if (config.ws.remote)
+    config.remote = config.ws.remote
+  else
+    config.remote = config.address
 
   return config
 }
+
